@@ -6,7 +6,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: backend
-    image: backend:0.0.1
+    image: adamilkom00/backend:0.0.1
     restart: always
     ports:
       - "8000:8000"
@@ -24,7 +24,7 @@ services:
         VITE_API_URL: http://backend:8000
         VITE_NODE_ENV: production
     container_name: frontend
-    image: frontend:0.0.1
+    image: adamilkom00/frontend:0.0.1
     restart: always
     ports:
       - "3000:3000"
