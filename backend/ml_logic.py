@@ -10,14 +10,14 @@ import base64
 
 def encode_data(df):
     label_encoders = {}
-    for col in ['IPK', 'Pendapatan', 'JumlahTanggungan', 'PernahBeasiswa', 'Keputusan']:
+    for col in ['IPK', 'Pendapatan', 'JumlahTanggungan', 'Keputusan']:
         le = LabelEncoder()
         df[col] = le.fit_transform(df[col])
         label_encoders[col] = le
     return df, label_encoders
 
 def model_split(df, test_size=0.3, random_state=1):
-    X = df[['IPK', 'Pendapatan', 'JumlahTanggungan', 'PernahBeasiswa']]
+    X = df[['IPK', 'Pendapatan', 'JumlahTanggungan']]
     y = df['Keputusan']
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, random_state=random_state)
     clf = DecisionTreeClassifier()
@@ -31,7 +31,7 @@ def model_split(df, test_size=0.3, random_state=1):
     }
 
 def model_kfold(df, k=3, random_state=1, positive_label=1):
-    X = df[['IPK', 'Pendapatan', 'JumlahTanggungan', 'PernahBeasiswa']]
+    X = df[['IPK', 'Pendapatan', 'JumlahTanggungan']]
     y = df['Keputusan']
     skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=random_state)
 
@@ -63,7 +63,7 @@ def model_kfold(df, k=3, random_state=1, positive_label=1):
 def train_all_models(data):
     df = pd.DataFrame(data)
     df, label_encoders = encode_data(df)
-    positive_label = label_encoders['Keputusan'].transform(['ya'])[0]
+    positive_label = label_encoders['Keputusan'].transform(['LAYAK'])[0]
 
     model1 = model_split(df, test_size=0.3)
     model2 = model_split(df, test_size=0.2)
@@ -109,6 +109,34 @@ def majority_class(data, target_attr):
         label = row[target_attr]
         counts[label] = counts.get(label, 0) + 1
     return max(counts, key=counts.get)
+
+def discretize_input(row):
+    # Jika IPK sudah didiskretisasi (bentuk string), return langsung
+    if isinstance(row['IPK'], str) and row['IPK'] in ['<3.0', '3.0-3.5', '>3.5']:
+        return row
+
+    ipk = float(row['IPK'])
+    pendapatan = int(row['Pendapatan'])
+
+    if ipk < 3.0:
+        ipk_bin = '<3.0'
+    elif 3.0 <= ipk <= 3.5:
+        ipk_bin = '3.0-3.5'
+    else:
+        ipk_bin = '>3.5'
+
+    if pendapatan <= 3000000:
+        pendapatan_bin = '<=3jt'
+    elif 3000000 < pendapatan <= 6000000:
+        pendapatan_bin = '3-6jt'
+    else:
+        pendapatan_bin = '>6jt'
+
+    return {
+        'IPK': ipk_bin,
+        'Pendapatan': pendapatan_bin,
+        'JumlahTanggungan': int(row['JumlahTanggungan'])
+    }
 
 def build_tree(data, attributes, target_attr):
     labels = [row[target_attr] for row in data]
@@ -157,6 +185,9 @@ def build_tree(data, attributes, target_attr):
     return tree
 
 def predict_manual(tree, instance):
+    # Diskretisasi input
+    instance = discretize_input(instance)
+
     if isinstance(tree, str):
         return tree
     attr = tree['attribute']
@@ -205,14 +236,21 @@ def predict_manual(tree, instance):
 
 
 def build_and_visualize_manual_tree(data):
-    # Bangun decision tree
-    tree = build_tree(data, ['IPK', 'Pendapatan', 'JumlahTanggungan', 'PernahBeasiswa'], 'Keputusan')
+    # Diskretisasi dataset
+    binned_data = []
+    for row in data:
+        binned = discretize_input(row)
+        binned['Keputusan'] = row['Keputusan']
+        binned_data.append(binned)
 
-    # Konversi struktur tree ke JSON dan encode ke base64
+    # Bangun decision tree
+    tree = build_tree(binned_data, ['IPK', 'Pendapatan', 'JumlahTanggungan'], 'Keputusan')
+
+    # Encode JSON tree
     json_str = json.dumps(tree, indent=4)
     json_base64 = base64.b64encode(json_str.encode('utf-8')).decode('utf-8')
 
-    # Visualisasi tree menggunakan graphviz
+    # Visualisasi graph
     dot = Digraph()
     visited_edges = set()
 
@@ -228,19 +266,15 @@ def build_and_visualize_manual_tree(data):
                 gini_val = branch['gini']
                 child_id = str(id(child))
                 add_nodes_edges(child, node_id, val, entropy_val, gini_val)
-                edge_key = (node_id, child_id, val)
-                if edge_key not in visited_edges:
-                    visited_edges.add(edge_key)
+                if (node_id, child_id, val) not in visited_edges:
+                    visited_edges.add((node_id, child_id, val))
                     dot.edge(node_id, child_id, label=f"{val}\nEntropy={entropy_val:.4f}\nGini={gini_val:.4f}")
         if parent:
-            edge_key = (parent, node_id, label)
-            if edge_key not in visited_edges:
-                visited_edges.add(edge_key)
+            if (parent, node_id, label) not in visited_edges:
+                visited_edges.add((parent, node_id, label))
                 dot.edge(parent, node_id, label=f"{label}\nEntropy={entropy_val:.4f}\nGini={gini_val:.4f}")
 
     add_nodes_edges(tree)
-
-    # Generate PNG ke dalam memory, lalu encode base64
     png_bytes = dot.pipe(format='png')
     image_base64 = base64.b64encode(png_bytes).decode('utf-8')
 

@@ -6,7 +6,6 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: backend
-    image: adamilkom00/backend:0.0.1
     restart: always
     ports:
       - "8000:8000"
