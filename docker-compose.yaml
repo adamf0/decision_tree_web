@@ -11,9 +11,6 @@ services:
       - "8000:8000"
     networks:
       - app-network
-    depends_on:
-      db:
-        condition: service_healthy
 
   frontend:
     build:
@@ -23,7 +20,7 @@ services:
         VITE_API_URL: http://backend:8000
         VITE_NODE_ENV: production
     container_name: frontend
-    image: adamilkom00/frontend:0.0.1
+    # image: adamilkom00/frontend:0.0.1
     restart: always
     ports:
       - "3000:3000"
@@ -34,26 +31,6 @@ services:
       - app-network
     depends_on:
       - backend
-
-  db:
-    image: mysql:8.0
-    container_name: db
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: secret
-      MYSQL_DATABASE: decision_tree
-    ports:
-      - "3306:3306"
-    volumes:
-      - ./mysql_data:/var/lib/mysql
-      - ./mysql/initdb:/docker-entrypoint-initdb.d
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-psecret"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
 
 networks:
   app-network:

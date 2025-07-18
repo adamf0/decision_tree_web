@@ -6,7 +6,6 @@ class DataEntry(BaseModel):
     IPK: float
     Pendapatan: int
     JumlahTanggungan: int
-    # PernahBeasiswa: str
     Keputusan: str
 
     class Config:
@@ -16,30 +15,34 @@ class PredictionRequest(BaseModel):
     IPK: float
     Pendapatan: int
     JumlahTanggungan: int
-    # PernahBeasiswa: Literal["ya", "tidak"]
-
-    @validator("IPK", pre=True)
-    def validate_ipk_range(cls, v):
-        if v < 0 or v > 4:
-            raise ValueError("IPK harus antara 0.00 sampai 4.00")
-        return v
-
-    @validator("Pendapatan", pre=True)
-    def validate_pendapatan_range(cls, v):
-        if v < 0:
-            raise ValueError("Pendapatan tidak valid")
-        return v
-
-    @validator("JumlahTanggungan", pre=True)
-    def validate_tanggungan(cls, v):
-        if v < 0:
-            raise ValueError("Jumlah tanggungan tidak valid")
-        return v
 
     def to_tree_input(self):
         return {
-            "IPK": self.IPK,
-            "Pendapatan": self.Pendapatan,
-            "JumlahTanggungan": self.JumlahTanggungan,
-            # "PernahBeasiswa": self.PernahBeasiswa
+            "IPKBin": self.transform_ipk(),
+            "PendapatanBin": self.transform_pendapatan(),
+            "JumlahTanggunganBin": self.transform_tanggungan()
         }
+
+    def transform_ipk(self) -> str:
+        if self.IPK <= 3.0:
+            return "≤3.00"
+        elif 3.1 <= self.IPK <= 3.5:
+            return "3.1-3.5"
+        else:
+            return ">3.5"
+
+    def transform_pendapatan(self) -> str:
+        if self.Pendapatan <= 4_000_000:
+            return "≤4jt"
+        elif 4_000_000 < self.Pendapatan <= 6_000_000:
+            return "4-6jt"
+        else:
+            return ">6jt"
+
+    def transform_tanggungan(self) -> str:
+        if self.JumlahTanggungan < 3:
+            return "<3orang"
+        elif 3 <= self.JumlahTanggungan <= 4:
+            return "3-4orang"
+        else:
+            return ">=5orang"

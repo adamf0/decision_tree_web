@@ -8,7 +8,6 @@ export default function PredictionPage() {
     IPK: '',
     Pendapatan: '',
     JumlahTanggungan: '',
-    PernahBeasiswa: ''
   });
   const [prediction, setPrediction] = useState(null);
   const [imageResult, setImageResult] = useState(null);
@@ -56,7 +55,6 @@ export default function PredictionPage() {
         IPK: parseFloat(formData.IPK),
         Pendapatan: parseInt(formData.Pendapatan),
         JumlahTanggungan: parseInt(formData.JumlahTanggungan),
-        PernahBeasiswa: formData.PernahBeasiswa
       });
       setPrediction(response.data.prediction);
       setImageResult(response.data?.tree_image_base64 ?? null);
@@ -135,19 +133,6 @@ export default function PredictionPage() {
                 onChange={handleChange}
                 className="w-full p-2 border rounded-xl"
               />
-            </div>
-            <div>
-              <label className="block mb-1 font-medium">Pernah Dapat Beasiswa</label>
-              <select
-                name="PernahBeasiswa"
-                value={formData.PernahBeasiswa}
-                onChange={handleChange}
-                className="w-full p-2 border rounded-xl"
-              >
-                <option value="">Pilih</option>
-                <option value="ya">Ya</option>
-                <option value="tidak">Tidak</option>
-              </select>
             </div>
             <button
               type="submit"

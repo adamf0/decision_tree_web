@@ -79,11 +79,16 @@ def train_all_models(data):
     }
 
 # ========== Manual Tree ==========
+# ========================================
+# HITUNG ENTROPY
+# Rumus: H(S) = -∑pᵢ log₂(pᵢ)
+# ========================================
 def entropy(data, target_attr):
     freq = {}
     for row in data:
         label = row[target_attr]
         freq[label] = freq.get(label, 0) + 1
+
     total = len(data)
     ent = 0.0
     for count in freq.values():
@@ -91,18 +96,10 @@ def entropy(data, target_attr):
         ent -= p * math.log2(p)
     return round(ent, 4)
 
-def gini(data, target_attr):
-    freq = {}
-    for row in data:
-        label = row[target_attr]
-        freq[label] = freq.get(label, 0) + 1
-    total = len(data)
-    gini_index = 1.0
-    for count in freq.values():
-        p = count / total
-        gini_index -= p ** 2
-    return round(gini_index, 4)
-
+# ========================================
+# MAJORITY CLASS
+# Jika tidak bisa split, ambil label terbanyak
+# ========================================
 def majority_class(data, target_attr):
     counts = {}
     for row in data:
@@ -110,41 +107,22 @@ def majority_class(data, target_attr):
         counts[label] = counts.get(label, 0) + 1
     return max(counts, key=counts.get)
 
-def discretize_input(row):
-    # Jika IPK sudah didiskretisasi (bentuk string), return langsung
-    if isinstance(row['IPK'], str) and row['IPK'] in ['<3.0', '3.0-3.5', '>3.5']:
-        return row
-
-    ipk = float(row['IPK'])
-    pendapatan = int(row['Pendapatan'])
-
-    if ipk < 3.0:
-        ipk_bin = '<3.0'
-    elif 3.0 <= ipk <= 3.5:
-        ipk_bin = '3.0-3.5'
-    else:
-        ipk_bin = '>3.5'
-
-    if pendapatan <= 3000000:
-        pendapatan_bin = '<=3jt'
-    elif 3000000 < pendapatan <= 6000000:
-        pendapatan_bin = '3-6jt'
-    else:
-        pendapatan_bin = '>6jt'
-
-    return {
-        'IPK': ipk_bin,
-        'Pendapatan': pendapatan_bin,
-        'JumlahTanggungan': int(row['JumlahTanggungan'])
-    }
-
+# ========================================
+# MEMBANGUN POHON KEPUTUSAN DENGAN ENTROPY & GAIN
+# Gain = Entropy(parent) - ∑(proporsi * Entropy(cabang))
+# ========================================
 def build_tree(data, attributes, target_attr):
     labels = [row[target_attr] for row in data]
+
+    # Jika semua label sama, return label tsb (leaf node)
     if labels.count(labels[0]) == len(labels):
         return labels[0]
+
+    # Jika tidak ada atribut tersisa, kembalikan majority class
     if not attributes:
         return majority_class(data, target_attr)
 
+    # Fungsi hitung information gain
     def info_gain(data, attr):
         values = {}
         for row in data:
@@ -158,124 +136,105 @@ def build_tree(data, attributes, target_attr):
 
         return entropy(data, target_attr) - subset_entropy
 
+    # Pilih atribut terbaik (gain tertinggi)
     best_attr = max(attributes, key=lambda attr: info_gain(data, attr))
+
+    total_entropy = entropy(data, target_attr)  # Menghitung total entropy dari dataset terhadap target_attr menggunakan rumus:
+                                            # Entropy(S) = -Σ (p_i * log2(p_i)) untuk setiap kelas i dalam target_attr,
+                                            # di mana p_i adalah proporsi jumlah data dengan kelas ke-i terhadap total data.
+
     tree = {
         'attribute': best_attr,
         'branches': {}
     }
 
+    # Untuk setiap nilai dari atribut terbaik
     attr_values = set(row[best_attr] for row in data)
     for val in attr_values:
         subset = [row for row in data if row[best_attr] == val]
+        subset_entropy = entropy(subset, target_attr)
+        subset_gain = total_entropy - (len(subset) / len(data)) * subset_entropy
+
         if not subset:
             tree['branches'][val] = {
                 'entropy': 0.0,
-                'gini': 0.0,
+                'gain': 0.0,
                 'node': majority_class(data, target_attr)
             }
         else:
             remaining_attrs = [a for a in attributes if a != best_attr]
             subtree = build_tree(subset, remaining_attrs, target_attr)
             tree['branches'][val] = {
-                'entropy': entropy(subset, target_attr),
-                'gini': gini(subset, target_attr),
+                'entropy': round(subset_entropy, 4),
+                'gain': round(subset_gain, 4),
                 'node': subtree
             }
 
     return tree
 
-def predict_manual(tree, instance):
-    # Diskretisasi input
-    instance = discretize_input(instance)
-
-    if isinstance(tree, str):
-        return tree
-    attr = tree['attribute']
-    val = instance.get(attr)
-    branch = tree['branches'].get(val)
-    if not branch:
-        return "Unknown"
-    return predict_manual(branch['node'], instance)
-
-# def visualize_tree(tree, output='tree_visual'):
-#     dot = Digraph()
-#     visited_edges = set()
-
-#     def add_nodes_edges(node, parent=None, label=None, entropy_val=None, gini_val=None):
-#         node_id = str(id(node))
-#         if isinstance(node, str):
-#             dot.node(node_id, label=node, shape='box', style='filled', color='lightgreen')
-#         else:
-#             dot.node(node_id, label=node['attribute'], shape='ellipse', style='filled', color='lightblue')
-#             for val, branch in node['branches'].items():
-#                 child = branch['node']
-#                 entropy_val = branch['entropy']
-#                 gini_val = branch['gini']
-#                 child_id = str(id(child))
-#                 add_nodes_edges(child, node_id, val, entropy_val, gini_val)
-#                 edge_key = (node_id, child_id, val)
-#                 if edge_key not in visited_edges:
-#                     visited_edges.add(edge_key)
-#                     dot.edge(node_id, child_id, label=f"{val}\nEntropy={entropy_val:.4f}\nGini={gini_val:.4f}")
-#         if parent:
-#             edge_key = (parent, node_id, label)
-#             if edge_key not in visited_edges:
-#                 visited_edges.add(edge_key)
-#                 dot.edge(parent, node_id, label=f"{label}\nEntropy={entropy_val:.4f}\nGini={gini_val:.4f}")
-
-#     add_nodes_edges(tree)
-#     dot.render(output, format='png', cleanup=True)
-#     print(f"Saved decision tree to {output}.png")
-
-# def build_and_visualize_manual_tree(data, output='tree_with_entropy_and_gini'):
-#     tree = build_tree(data, ['IPK', 'Pendapatan', 'JumlahTanggungan', 'PernahBeasiswa'], 'Keputusan')
-#     visualize_tree(tree, output)
-#     with open(f"{output}.json", "w") as f:
-#         json.dump(tree, f, indent=4)
-#     return tree
-
-
-def build_and_visualize_manual_tree(data):
-    # Diskretisasi dataset
-    binned_data = []
-    for row in data:
-        binned = discretize_input(row)
-        binned['Keputusan'] = row['Keputusan']
-        binned_data.append(binned)
-
-    # Bangun decision tree
-    tree = build_tree(binned_data, ['IPK', 'Pendapatan', 'JumlahTanggungan'], 'Keputusan')
-
-    # Encode JSON tree
-    json_str = json.dumps(tree, indent=4)
-    json_base64 = base64.b64encode(json_str.encode('utf-8')).decode('utf-8')
-
-    # Visualisasi graph
+# ========================================
+# VISUALISASI POHON DENGAN ENTROPY & GAIN
+# Menggunakan Graphviz
+# ========================================
+def visualize_tree(tree, output='tree_visual'):
     dot = Digraph()
     visited_edges = set()
 
-    def add_nodes_edges(node, parent=None, label=None, entropy_val=None, gini_val=None):
+    def add_nodes_edges(node, parent=None, label=None):
         node_id = str(id(node))
+
         if isinstance(node, str):
+            # Node daun (keputusan)
             dot.node(node_id, label=node, shape='box', style='filled', color='lightgreen')
         else:
+            # Node atribut
             dot.node(node_id, label=node['attribute'], shape='ellipse', style='filled', color='lightblue')
+
             for val, branch in node['branches'].items():
                 child = branch['node']
-                entropy_val = branch['entropy']
-                gini_val = branch['gini']
                 child_id = str(id(child))
-                add_nodes_edges(child, node_id, val, entropy_val, gini_val)
-                if (node_id, child_id, val) not in visited_edges:
-                    visited_edges.add((node_id, child_id, val))
-                    dot.edge(node_id, child_id, label=f"{val}\nEntropy={entropy_val:.4f}\nGini={gini_val:.4f}")
-        if parent:
-            if (parent, node_id, label) not in visited_edges:
-                visited_edges.add((parent, node_id, label))
-                dot.edge(parent, node_id, label=f"{label}\nEntropy={entropy_val:.4f}\nGini={gini_val:.4f}")
+                add_nodes_edges(child, node_id, val)
+
+                # Tampilkan label edge = nilai atribut
+                edge_key = (node_id, child_id, val)
+                if edge_key not in visited_edges:
+                    visited_edges.add(edge_key)
+                    dot.edge(
+                        node_id, child_id,
+                        label=f"{val}\nGain={branch['gain']}, \nEntropy={branch['entropy']}"
+                    )
 
     add_nodes_edges(tree)
-    png_bytes = dot.pipe(format='png')
-    image_base64 = base64.b64encode(png_bytes).decode('utf-8')
+    file_path = dot.render(output, format='png', cleanup=True)
 
-    return tree, json_base64, image_base64
+    with open(file_path, 'rb') as f:
+        png_bytes = f.read()
+        
+    image_base64 = base64.b64encode(png_bytes).decode('utf-8')
+    return image_base64
+
+# ========================================
+# FUNGSI PREDIKSI UNTUK INSTANSI BARU
+# ========================================
+def predict(tree, instance):
+    if isinstance(tree, str):
+        return tree
+
+    attr = tree['attribute']
+    val = instance.get(attr)
+    branch = tree['branches'].get(val)
+
+    if branch is None:
+        return "Unknown"
+
+    return predict(branch['node'], instance)
+
+def build_decision_tree(data, new_instance, attributes, target):
+    tree = build_tree(data, attributes, target)
+
+    return {
+        "new_instance":new_instance,
+        "prediction": predict(tree, new_instance),
+        "tree_json_base64": base64.b64encode(json.dumps(tree).encode('utf-8')).decode('utf-8'),
+        "tree_image_base64": visualize_tree(tree, 'decision_tree_with_gain')
+    }

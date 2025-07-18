@@ -9,5 +9,4 @@ class Dataset(Base):
     IPK = Column(Float, nullable=False)
     Pendapatan = Column(Integer, nullable=False)
     JumlahTanggungan = Column(Integer, nullable=False)
-    # PernahBeasiswa = Column(String(10))
-    Keputusan = Column(String(10), nullable=False)
+    Keputusan = Column(String(100), nullable=False)
