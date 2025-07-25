@@ -13,7 +13,7 @@ services:
     networks:
       - app-network
     extra_hosts:
-      - "remote-db:host.docker.internal"
+      - "remote-db:127.0.0.1"
     environment:
       - DATABASE_URL=mysql+pymysql://sibea:s1b34unp4kAPPS@remote-db:3306/unpak_sibea
 
