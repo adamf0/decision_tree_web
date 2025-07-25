@@ -6,7 +6,7 @@ services:
     #   context: ./backend
     #   dockerfile: Dockerfile
     container_name: backend
-    image: adamilkom00/decision_tree_backend:0.0.4
+    image: adamilkom00/decision_tree_backend:0.0.5
     restart: always
     ports:
       - "8000:8000"

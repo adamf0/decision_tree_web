@@ -14,7 +14,7 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # React dev server
+    allow_origins=["http://localhost:3000","https://sibea.unpak.ac.id"],  # React dev server
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,7 +28,7 @@ def get_db():
     finally:
         db.close()
 
-@app.get("/train-all-models")
+@app.get("/api/train-all-models")
 def run_all_models(db: Session = Depends(get_db)):
     data = db.query(models.Dataset).all()
     rows = [vars(row) for row in data]
@@ -37,7 +37,7 @@ def run_all_models(db: Session = Depends(get_db)):
         r.pop("_sa_instance_state", None)
     return train_all_models(rows)
 
-@app.post("/visualize-tree")
+@app.post("/api/visualize-tree")
 def visualize_tree_manual(request: PredictionRequest, db: Session = Depends(get_db)):
     # 1. Ambil data dari database
     data = db.query(models.Dataset).all()
