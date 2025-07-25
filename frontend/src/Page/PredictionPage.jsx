@@ -150,8 +150,8 @@ export default function PredictionPage() {
         </div>
 
         {/* Chart Column */}
-        <div className="bg-white rounded-2xl shadow p-6">
-          <h2 className="text-xl font-semibold mb-2">Model Evaluation</h2>
+        <div className="">
+          {/* <h2 className="text-xl font-semibold mb-2">Model Evaluation</h2>
           {metrics && (
             <p className="mb-4 text-sm text-gray-600">
               Total Dataset: <span className="font-bold">{metrics?.total_dataset ?? 0} data</span>
@@ -170,7 +170,7 @@ export default function PredictionPage() {
                 <Bar dataKey="f1_score" fill="#f59e0b" name="F1 Score" />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+          </div> */}
         </div>
 
         {prediction && (

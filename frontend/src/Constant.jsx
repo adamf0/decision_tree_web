@@ -1,5 +1,5 @@
 import axios from "axios";
-const baseUrl = "http://localhost:8000";
+const baseUrl = "https://sibea.unpak.ac.id/api/";
 
 const apiProduction = axios.create({
   baseURL: baseUrl,
