@@ -141,7 +141,7 @@ export default function PredictionPage() {
               Submit
             </button>
             {prediction && (
-              <p className="mt-2 text-green-600 font-medium">Hasil Prediksi: {prediction=="Unknown"? "Tidak Diketahui":prediction}</p>
+              <p className="mt-2 text-green-600 font-medium">Hasil Prediksi: {prediction=="Unknown"? "Tidak Layak":prediction}</p>
             )}
             {error && (
               <p className="mt-2 text-red-600 font-medium">{error}</p>
