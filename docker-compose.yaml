@@ -13,9 +13,9 @@ services:
     networks:
       - app-network
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "remote-db:host.docker.internal"
     environment:
-      - DATABASE_URL=mysql+pymysql://sibea:s1b34unp4kAPPS@172.16.20.142:3306/unpak_sibea
+      - DATABASE_URL=mysql+pymysql://sibea:s1b34unp4kAPPS@remote-db:3306/unpak_sibea
 
   frontend:
     build:
