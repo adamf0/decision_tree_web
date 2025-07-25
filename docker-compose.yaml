@@ -13,7 +13,7 @@ services:
     networks:
       - app-network
     extra_hosts:
-      - "remote-db:172.16.20.135"
+      - "remote-db:172.16.20.142"
     environment:
       - DATABASE_URL=mysql+pymysql://sibea:s1b34unp4kAPPS@remote-db:3306/unpak_sibea
 
