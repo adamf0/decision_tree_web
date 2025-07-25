@@ -13,7 +13,7 @@ services:
     networks:
       - app-network
     environment:
-      - DATABASE_URL=mysql+pymysql://sibea:s1b34unp4kAPPS@localhost:3306/unpak_sibea
+      - DATABASE_URL=mysql+pymysql://sibea:s1b34unp4kAPPS@host.docker.internal:3306/unpak_sibea
 
   frontend:
     build:
