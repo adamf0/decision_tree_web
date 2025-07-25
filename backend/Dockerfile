@@ -1,9 +1,9 @@
 FROM python:3.9-slim
 
 # Install graphviz dependencies
-RUN apt-get update && \
-    apt-get install -y graphviz && \
-    apt-get clean
+RUN apt-get update 
+RUN apt-get install -y graphviz 
+RUN apt-get clean
 
 # Set workdir
 WORKDIR /app
