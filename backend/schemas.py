@@ -46,3 +46,6 @@ class PredictionRequest(BaseModel):
             return "3-4orang"
         else:
             return ">=5orang"
+
+class DataRequest(BaseModel):
+    NPM: str

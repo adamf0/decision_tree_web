@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { apiProduction } from '../Constant'
 import TreeNode from './TreeNode';
+import Select from 'react-select';
 
 export default function PredictionPage() {
   const [formData, setFormData] = useState({
+    NPM: '',
     IPK: '',
     Pendapatan: '',
     JumlahTanggungan: '',
@@ -15,6 +17,7 @@ export default function PredictionPage() {
   const [error, setError] = useState(null);
 
   const [metrics, setMetrics] = useState(null);
+  const [mahasiswaOptions, setMahasiswaOptions] = useState([]);
 
   useEffect(() => {
     // Dummy fetch, replace with actual fetch from your API
@@ -29,6 +32,20 @@ export default function PredictionPage() {
           console.error("Error fetching data:", error);
         });
     };
+
+    const fetchListMahasiswa = async () => {
+      await apiProduction
+        .get("/list-mahasiswa")
+        .then((response) => {
+          setMahasiswaOptions(response.data);
+          console.log("Data fetched:", response.data);
+        })
+        .catch((error) => {
+          console.error("Error fetching data:", error);
+        });
+    };
+
+    fetchListMahasiswa();
     fetchMetrics();
   }, []);
 
@@ -47,14 +64,20 @@ export default function PredictionPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const formatRupiah = (number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(number);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     try {
-      const response = await apiProduction.post('/visualize-tree', {
-        IPK: parseFloat(formData.IPK),
-        Pendapatan: parseInt(formData.Pendapatan),
-        JumlahTanggungan: parseInt(formData.JumlahTanggungan),
+      const response = await apiProduction.post('/visualize-tree-new', {
+        NPM: `${formData.NPM}`,
       });
       setPrediction(response.data.prediction);
       setImageResult(response.data?.tree_image_base64 ?? null);
@@ -102,6 +125,25 @@ export default function PredictionPage() {
           <h2 className="text-xl font-semibold mb-4">Input Data</h2>
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
+              <label className="block mb-1 font-medium">Mahasiswa</label>
+              <Select
+                name="Mahasiswa"
+                options={mahasiswaOptions}
+                value={mahasiswaOptions.find((opt) => opt.value === formData.NPM)}
+                onChange={(selected) => setFormData((prev) => ({ 
+                  ...prev, 
+                  NPM: selected?.value?.toString() || "",
+                  IPK: selected?.ipk?.toString() || "",
+                  Pendapatan: selected?.pendapatan?.toString() || "",
+                  JumlahTanggungan: selected?.jumlahtanggungan?.toString() || "" ,
+                }))}
+                className="w-full"
+                classNamePrefix="select"
+                placeholder="Pilih Mahasiswa"
+              />
+            </div>
+
+            <div>
               <label className="block mb-1 font-medium">IPK</label>
               <input
                 type="number"
@@ -112,16 +154,18 @@ export default function PredictionPage() {
                 value={formData.IPK}
                 onChange={handleChange}
                 className="w-full p-2 border rounded-xl"
+                disabled={true}
               />
             </div>
             <div>
               <label className="block mb-1 font-medium">Pendapatan Keluarga</label>
               <input
-                type="number"
+                type="text"
                 name="Pendapatan"
-                value={formData.Pendapatan}
+                value={formatRupiah(formData.Pendapatan)}
                 onChange={handleChange}
                 className="w-full p-2 border rounded-xl"
+                disabled={true}
               />
             </div>
             <div>
@@ -132,8 +176,10 @@ export default function PredictionPage() {
                 value={formData.JumlahTanggungan}
                 onChange={handleChange}
                 className="w-full p-2 border rounded-xl"
+                disabled={true}
               />
             </div>
+
             <button
               type="submit"
               className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700"
