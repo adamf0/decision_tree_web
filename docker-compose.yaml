@@ -2,9 +2,9 @@ version: '3.8'
 
 services:
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    # build:
+    #   context: ./backend
+    #   dockerfile: Dockerfile
     container_name: backend
     image: adamilkom00/decision_tree_backend:0.0.6
     restart: always
