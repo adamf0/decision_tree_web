@@ -211,13 +211,17 @@ export default function PredictionPage() {
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700"
-            >
-              Submit
-            </button>
+            {
+              loading? 
+                "Sedang memuat hasil":
+                <button
+                  type="submit"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700"
+                >
+                  Submit
+                </button>
+            }
+
             {prediction && (
               <p className="mt-2 text-green-600 font-medium">Hasil Prediksi: {prediction=="Unknown"? "Tidak Layak":prediction}</p>
             )}
