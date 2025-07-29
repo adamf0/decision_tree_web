@@ -11,6 +11,8 @@ export default function PredictionPage() {
     Pendapatan: '',
     JumlahTanggungan: '',
   });
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("IPK");
   const [prediction, setPrediction] = useState(null);
   const [imageResult, setImageResult] = useState(null);
   const [treeJson, setTree] = useState({});
@@ -75,6 +77,7 @@ export default function PredictionPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setLoading(true);
     try {
       const response = await apiProduction.post('/visualize-tree-new', {
         NPM: `${formData.NPM}`,
@@ -82,9 +85,11 @@ export default function PredictionPage() {
       setPrediction(response.data.prediction);
       setImageResult(response.data?.tree_image_base64 ?? null);
       setTree(base64ToJson(response.data?.tree_json_base64));
+      setLoading(false);
     } catch (err) {
       console.error("Prediction error:", err);
       setError("Terjadi kesalahan saat memproses prediksi.");
+      setLoading(false);
     }
   };
 
@@ -116,6 +121,24 @@ export default function PredictionPage() {
       },
     ]
   : [];
+
+  const tabData = {
+    "IPK": [
+      { kategori: "Rendah", rentang: "<3.00" },
+      { kategori: "Sedang", rentang: "3.10 - 3.50" },
+      { kategori: "Tinggi", rentang: ">3.50" },
+    ],
+    "Jumlah Tanggungan Keluarga": [
+      { kategori: "Rendah", rentang: "1-2 orang" },
+      { kategori: "Sedang", rentang: "3-4 orang" },
+      { kategori: "Tinggi", rentang: ">=5 orang" },
+    ],
+    "Penghasilan Orang Tua": [
+      { kategori: "Rendah", rentang: "<4.000.000" },
+      { kategori: "Sedang", rentang: "4.000.001-6.000.000" },
+      { kategori: "Tinggi", rentang: ">6.000.000" },
+    ],
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
@@ -182,6 +205,7 @@ export default function PredictionPage() {
 
             <button
               type="submit"
+              disabled={loading}
               className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700"
             >
               Submit
@@ -196,7 +220,45 @@ export default function PredictionPage() {
         </div>
 
         {/* Chart Column */}
-        <div className="">
+        <div className="bg-white rounded-2xl shadow p-6">
+          {/* Tabs */}
+          <div className="flex gap-4 border-b mb-4">
+            {Object.keys(tabData).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 font-semibold ${
+                  activeTab === tab
+                    ? "border-b-2 border-blue-500 text-blue-600"
+                    : "text-gray-500 hover:text-blue-500"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto border-collapse">
+              <thead>
+                <tr className="bg-gray-100 text-left">
+                  <th className="px-4 py-2 border-b">Kategori</th>
+                  <th className="px-4 py-2 border-b">Rentang</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tabData[activeTab].map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 border-b">{item.kategori}</td>
+                    <td className="px-4 py-2 border-b">{item.rentang}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {/* <div className="bg-white rounded-2xl shadow p-6"> */}
           {/* <h2 className="text-xl font-semibold mb-2">Model Evaluation</h2>
           {metrics && (
             <p className="mb-4 text-sm text-gray-600">
@@ -217,7 +279,7 @@ export default function PredictionPage() {
               </BarChart>
             </ResponsiveContainer>
           </div> */}
-        </div>
+        {/* </div> */}
 
         {prediction && (
           <>
