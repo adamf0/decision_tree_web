@@ -12,6 +12,7 @@ export default function PredictionPage() {
     JumlahTanggungan: '',
   });
   const [loading, setLoading] = useState(false);
+  const [loadingSelect, setLoadingSelect] = useState(false);
   const [activeTab, setActiveTab] = useState("IPK");
   const [prediction, setPrediction] = useState(null);
   const [imageResult, setImageResult] = useState(null);
@@ -36,14 +37,17 @@ export default function PredictionPage() {
     };
 
     const fetchListMahasiswa = async () => {
+      setLoadingSelect(true);
       await apiProduction
         .get("/list-mahasiswa")
         .then((response) => {
           setMahasiswaOptions(response.data);
+          setLoadingSelect(false);
           console.log("Data fetched:", response.data);
         })
         .catch((error) => {
           console.error("Error fetching data:", error);
+          setLoadingSelect(false);
         });
     };
 
@@ -149,21 +153,25 @@ export default function PredictionPage() {
           <form className="space-y-4" onSubmit={handleSubmit}>
             <div>
               <label className="block mb-1 font-medium">Mahasiswa</label>
-              <Select
-                name="Mahasiswa"
-                options={mahasiswaOptions}
-                value={mahasiswaOptions.find((opt) => opt.value === formData.NPM)}
-                onChange={(selected) => setFormData((prev) => ({ 
-                  ...prev, 
-                  NPM: selected?.value?.toString() || "",
-                  IPK: selected?.ipk?.toString() || "",
-                  Pendapatan: selected?.pendapatan?.toString() || "",
-                  JumlahTanggungan: selected?.jumlahtanggungan?.toString() || "" ,
-                }))}
-                className="w-full"
-                classNamePrefix="select"
-                placeholder="Pilih Mahasiswa"
-              />
+              {
+                loadingSelect? 
+                "sedang memuat data mahasiswa":
+                <Select
+                  name="Mahasiswa"
+                  options={mahasiswaOptions}
+                  value={mahasiswaOptions.find((opt) => opt.value === formData.NPM)}
+                  onChange={(selected) => setFormData((prev) => ({ 
+                    ...prev, 
+                    NPM: selected?.value?.toString() || "",
+                    IPK: selected?.ipk?.toString() || "",
+                    Pendapatan: selected?.pendapatan?.toString() || "",
+                    JumlahTanggungan: selected?.jumlahtanggungan?.toString() || "" ,
+                  }))}
+                  className="w-full"
+                  classNamePrefix="select"
+                  placeholder="Pilih Mahasiswa"
+                />
+              }
             </div>
 
             <div>
