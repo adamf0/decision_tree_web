@@ -21,6 +21,24 @@ export default function PredictionPage() {
 
   const [metrics, setMetrics] = useState(null);
   const [mahasiswaOptions, setMahasiswaOptions] = useState([]);
+  
+  const [mahasiswa, setMahasiswa] = useState([]);
+  const [error2, setError2] = useState(null);
+  const [loading2, setLoading2] = useState(false);
+  const [summary, setSummary] = useState({
+    total: 0,
+    layak: 0,
+    tidakLayak: 0,
+    TP: 0,
+    TN: 0,
+    FP: 0,
+    FN: 0,
+    accuracy: 0,
+    precision: 0,
+    recall: 0,
+    f1: 0,
+  });
+
 
   useEffect(() => {
     // Dummy fetch, replace with actual fetch from your API
@@ -42,6 +60,7 @@ export default function PredictionPage() {
         .get("/list-mahasiswa")
         .then((response) => {
           setMahasiswaOptions(response.data);
+          setMahasiswa(response.data);
           setLoadingSelect(false);
           console.log("Data fetched:", response.data);
         })
@@ -97,6 +116,73 @@ export default function PredictionPage() {
     }
   };
 
+  const handleSubmit2 = async (e) => {
+    e.preventDefault();
+    setError2(null);
+    setLoading2(true);
+
+    const fetchPredictionWithRetry = async (mhs, maxRetries = 3) => {
+      // for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await apiProduction.post('/visualize-tree-newV2', {
+            NPM: mhs.npm,
+          });
+          const prediksi = response.data.prediction=="Unknown"? "TIDAK LAYAK":response.data.prediction;
+
+          const realita = mhs.keputusan?.toUpperCase?.() ?? "TIDAK LAYAK";
+          let jenis = "-";
+          if (prediksi === "LAYAK" && realita === "LAYAK") jenis = "TP";
+          else if (prediksi === "TIDAK LAYAK" && realita === "TIDAK LAYAK") jenis = "TN";
+          else if (prediksi === "LAYAK" && realita === "TIDAK LAYAK") jenis = "FP";
+          else if (prediksi === "TIDAK LAYAK" && realita === "LAYAK") jenis = "FN";
+
+          return { ...mhs, prediksi: prediksi, jenis };
+        } catch (err) {
+          throw err;
+          // await new Promise((res) => setTimeout(res, 1000));
+        }
+      // }
+    };
+
+    try {
+      const resultPromises = mahasiswa.map((m) => fetchPredictionWithRetry(m));
+      const results = await Promise.all(resultPromises);
+
+      const total = results.length;
+      const layak = results.filter((r) => r.prediksi === "LAYAK").length;
+      const tidakLayak = results.filter((r) => r.prediksi === "TIDAK LAYAK").length;
+
+      const TP = results.filter((r) => r.jenis === "TP").length;
+      const TN = results.filter((r) => r.jenis === "TN").length;
+      const FP = results.filter((r) => r.jenis === "FP").length;
+      const FN = results.filter((r) => r.jenis === "FN").length;
+
+      const accuracy = total > 0 ? ((TP + TN) / total).toFixed(4) : 0;
+      const recall = TP + FN > 0 ? (TP / (TP + FN)).toFixed(4) : 0;
+      const precision = TP + FP > 0 ? (TP / (TP + FP)).toFixed(4) : 0;
+      const f1 =
+        parseFloat(precision) + parseFloat(recall) > 0
+          ? (2 * (precision * recall) / (parseFloat(precision) + parseFloat(recall))).toFixed(4)
+          : 0;
+
+      const sortedResults = [...results].sort((a, b) => {
+        if (a.prediksi === "LAYAK" && b.prediksi !== "LAYAK") return -1;
+        if (a.prediksi !== "LAYAK" && b.prediksi === "LAYAK") return 1;
+        return 0;
+      });
+
+      console.log({ sortedResults, total, layak, tidakLayak, TP, TN, FP, FN, accuracy, precision, recall, f1 })
+      setSummary({ total, layak, tidakLayak, TP, TN, FP, FN, accuracy, precision, recall, f1 });
+      setMahasiswa(sortedResults);
+      setLoading2(false);
+    } catch (err) {
+      console.error("Prediction error:", err);
+      setError2("Terjadi kesalahan saat memproses prediksi.");
+      setLoading2(false);
+    }
+  };
+
+
   const chartData = metrics
   ? [
       {
@@ -143,6 +229,39 @@ export default function PredictionPage() {
       { kategori: "Tinggi", rentang: ">6.000.000" },
     ],
   };
+
+  function renderRow(){
+    if(loading2){
+      return <tr className="hover:bg-gray-50">
+                <td className="px-4 py-2 border-b" colSpan={8}>Sedang proses klasifikasi</td>
+              </tr>;
+    }
+    if(error2){
+      return <tr className="hover:bg-gray-50">
+                <td className="px-4 py-2 border-b" colSpan={8}>ada masalah pada aplikasi, klik ulang Mulai Prediksi atau hubungi admin!</td>
+              </tr>;
+    }
+
+    return mahasiswa.map((item,index) => {
+                  let style = "";
+                  if((index<=50 && item?.prediksi=="LAYAK")){
+                    style = "bg-green-300";
+                  } else if(index>50 || item?.prediksi=="TIDAK LAYAK"){
+                    style = "bg-orange-300";
+                  }
+                  
+                  return <tr key={item.id} className={style}>
+                    <td className="px-4 py-2 border-b">{index+1}</td>
+                    <td className="px-4 py-2 border-b">{item.npm}</td>
+                    <td className="px-4 py-2 border-b">{item.nama}</td>
+                    <td className="px-4 py-2 border-b">{item.ipk}</td>
+                    <td className="px-4 py-2 border-b">{item.jumlahtanggungan}</td>
+                    <td className="px-4 py-2 border-b">{item.pendapatan}</td>
+                    <td className={`px-4 py-2 border-b ${item.keputusan=="LAYAK"? "text-green-600":"text-red-600"}`}>{item.keputusan}</td>
+                    <td className={`px-4 py-2 border-b ${item?.prediksi=="LAYAK"? "text-green-600":"text-red-600"}`}>{item?.prediksi ?? ""}</td>
+                  </tr>;
+                });
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
@@ -309,6 +428,43 @@ export default function PredictionPage() {
           )}
           </>
         )}
+
+        <div className="bg-white rounded-2xl shadow p-6 overflow-x-auto">
+            <button className="bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700" onClick={handleSubmit2}>Mulai Prediksi</button>
+            <div className="mt-4 p-4 rounded-xl bg-gray-50 shadow-inner text-sm space-y-2">
+              <p className="font-semibold">📊 Ringkasan Hasil Prediksi:</p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-y-1 gap-x-4">
+                <p>Total Data: <span className="font-medium">{summary.total}</span></p>
+                <p>Total LAYAK: <span className="text-green-600 font-medium">{summary.layak}</span></p>
+                <p>Total TIDAK LAYAK: <span className="text-red-600 font-medium">{summary.tidakLayak}</span></p>
+                <p>True Positive (TP): <span className="font-medium">{summary.TP}</span></p>
+                <p>True Negative (TN): <span className="font-medium">{summary.TN}</span></p>
+                <p>False Positive (FP): <span className="text-red-600 font-medium">{summary.FP}</span></p>
+                <p>False Negative (FN): <span className="text-red-600 font-medium">{summary.FN}</span></p>
+                <p>🎯 Accuracy: <span className="font-medium">{summary.accuracy*100} %</span></p>
+                <p>📈 Precision: <span className="font-medium">{summary.precision*100} %</span></p>
+                <p>🔁 Recall: <span className="font-medium">{summary.recall*100} %</span></p>
+                <p>📊 F1 Score: <span className="font-medium">{summary.f1*100} %</span></p>
+              </div>
+            </div>
+            <table className="min-w-full table-auto border-collapse mt-4">
+              <thead>
+                <tr className="bg-gray-100 text-left">
+                  <th className="px-4 py-2 border-b">No</th>
+                  <th className="px-4 py-2 border-b">NPM</th>
+                  <th className="px-4 py-2 border-b">NAMA</th>
+                  <th className="px-4 py-2 border-b">IPK</th>
+                  <th className="px-4 py-2 border-b">Jumlah Tanggungan</th>
+                  <th className="px-4 py-2 border-b">Pendapatan Ortu</th>
+                  <th className="px-4 py-2 border-b">Status Penerimaan</th>
+                  <th className="px-4 py-2 border-b">Prediksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                {renderRow()}
+              </tbody>
+            </table>
+        </div>
       </div>
     </div>
   );

@@ -238,3 +238,11 @@ def build_decision_tree(data, new_instance, attributes, target):
         "tree_json_base64": base64.b64encode(json.dumps(tree).encode('utf-8')).decode('utf-8'),
         "tree_image_base64": visualize_tree(tree, 'decision_tree_with_gain')
     }
+
+def build_decision_treeV2(data, new_instance, attributes, target):
+    tree = build_tree(data, attributes, target)
+
+    return {
+        "new_instance":new_instance,
+        "prediction": predict(tree, new_instance),
+    }
